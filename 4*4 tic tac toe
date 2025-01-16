@@ -1,0 +1,258 @@
+import pygame
+import sys
+
+
+class TicTacToe:
+    def __init__(self):
+        pygame.init()
+
+        self.width = 500
+        self.height = 500
+        self.screen = pygame.display.set_mode((self.width, self.height))
+        pygame.display.set_caption("4x4 Tic Tac Toe")
+
+        self.WHITE = (255, 255, 255)
+        self.BLACK = (0, 0, 0)
+        self.RED = (255, 0, 0)
+        self.GREEN = (0, 255, 0)
+
+        self.rows = 4
+        self.cols = 4
+        self.size = self.width // 4
+        self.radius = self.size // 3
+        self.line = 10
+
+        self.gameboard = [["" for i in range(self.cols)] for k in range(self.rows)]
+        self.player1 = 'O'
+        self.player2 = 'X'
+        self.current = self.player1
+        self.game_over = False
+
+        # Heuristic weights
+        self.CENTER_WEIGHT = 3
+        self.ADJACENCY_WEIGHT = 2
+        self.BLOCKING_WEIGHT = 4
+        self.WINNING_WEIGHT = 5
+        self.MAX_DEPTH = 4
+
+    def get_line_score(self, line, player):
+        """Calculate score for a line based on its potential."""
+        empty_count = line.count("")
+        player_count = line.count(player)
+        opponent_count = len(line) - empty_count - player_count
+
+        if opponent_count == 0:  # Potential winning line
+            if player_count == 3:
+                return 100  # Immediate win opportunity
+            elif player_count == 2:
+                return 10
+            elif player_count == 1:
+                return 1
+        elif player_count == 0 and opponent_count == 3:  # Blocking needed
+            return 50  # High priority for blocking opponent
+        return 0
+
+    def evaluate_position_heuristic(self, row, col, player):
+        """Evaluate a position using multiple heuristics."""
+        score = 0
+
+        # Center preference
+        if 1 <= row <= 2 and 1 <= col <= 2:
+            score += self.CENTER_WEIGHT
+
+        # Get all relevant lines
+        rows = self.gameboard[row]
+        cols = [self.gameboard[i][col] for i in range(4)]
+        diag1 = []
+        diag2 = []
+
+        # Check if position is part of diagonals
+        if row == col:
+            diag1 = [self.gameboard[i][i] for i in range(4)]
+        if row + col == 3:
+            diag2 = [self.gameboard[i][3 - i] for i in range(4)]
+
+        # Evaluate each line
+        for line in [rows, cols, diag1, diag2]:
+            if line:  # Only evaluate non-empty line lists
+                score += self.get_line_score(line, player)
+
+        # Check for adjacent pieces
+        for dr, dc in [(0, 1), (1, 0), (1, 1), (1, -1), (-1, 0), (0, -1), (-1, -1), (-1, 1)]:
+            new_row, new_col = row + dr, col + dc
+            if (0 <= new_row < 4 and 0 <= new_col < 4 and
+                    self.gameboard[new_row][new_col] == player):
+                score += self.ADJACENCY_WEIGHT
+
+        return score
+
+    def get_ordered_moves(self, player):
+        """Get all possible moves ordered by their heuristic value."""
+        moves = []
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if self.gameboard[i][j] == "":
+                    score = self.evaluate_position_heuristic(i, j, player)
+                    moves.append({'row': i, 'col': j, 'score': score})
+
+        # Sort moves by score in descending order
+        return sorted(moves, key=lambda x: x['score'], reverse=True)
+
+    def minimax(self, gameboard, depth, alpha, beta, maximize):
+        """Minimax algorithm with alpha-beta pruning and heuristic ordering."""
+        if depth >= self.MAX_DEPTH:
+            return 0
+
+        winner = self.Winner()
+        if winner == self.player1:
+            return depth - 17
+        if winner == self.player2:
+            return 17 - depth
+        if winner == 'tie':
+            return 0
+
+        if maximize:
+            best = float('-inf')
+            moves = self.get_ordered_moves(self.player2)
+            for move in moves:
+                if gameboard[move['row']][move['col']] == "":
+                    gameboard[move['row']][move['col']] = self.player2
+                    score = self.minimax(gameboard, depth + 1, alpha, beta, False)
+                    gameboard[move['row']][move['col']] = ""
+                    best = max(best, score)
+                    alpha = max(alpha, best)
+                    if beta <= alpha:
+                        break
+            return best
+        else:
+            best = float('inf')
+            moves = self.get_ordered_moves(self.player1)
+            for move in moves:
+                if gameboard[move['row']][move['col']] == "":
+                    gameboard[move['row']][move['col']] = self.player1
+                    score = self.minimax(gameboard, depth + 1, alpha, beta, True)
+                    gameboard[move['row']][move['col']] = ""
+                    best = min(best, score)
+                    beta = min(beta, best)
+                    if beta <= alpha:
+                        break
+            return best
+
+    def best_move(self):
+        """Get the best move using minimax with heuristic ordering."""
+        best_value = float("-inf")
+        move = None
+
+        ordered_moves = self.get_ordered_moves(self.player2)
+        for potential_move in ordered_moves[:6]:  # Consider top 6 moves only
+            self.gameboard[potential_move['row']][potential_move['col']] = self.player2
+            move_value = self.minimax(self.gameboard, 0, float('-inf'), float('inf'), False)
+            self.gameboard[potential_move['row']][potential_move['col']] = ""
+
+            if move_value > best_value:
+                best_value = move_value
+                move = (potential_move['row'], potential_move['col'])
+
+        return move
+
+    def Winner(self):
+        # Check rows for winner
+        for i in range(self.rows):
+            if (self.gameboard[i][0] == self.gameboard[i][1] ==
+                    self.gameboard[i][2] == self.gameboard[i][3] != ''):
+                return self.gameboard[i][0]
+
+        # Check columns for winner
+        for j in range(self.cols):
+            if (self.gameboard[0][j] == self.gameboard[1][j] ==
+                    self.gameboard[2][j] == self.gameboard[3][j] != ''):
+                return self.gameboard[0][j]
+
+        # Check diagonals for winner
+        if (self.gameboard[0][0] == self.gameboard[1][1] ==
+                self.gameboard[2][2] == self.gameboard[3][3] != ''):
+            return self.gameboard[0][0]
+        if (self.gameboard[3][0] == self.gameboard[2][1] ==
+                self.gameboard[1][2] == self.gameboard[0][3] != ''):
+            return self.gameboard[3][0]
+
+        if not any('' in row for row in self.gameboard):
+            return 'tie'
+        return None
+
+    def lines(self):
+        for i in range(1, self.rows):
+            pygame.draw.line(self.screen, self.BLACK,
+                             (0, i * self.size),
+                             (self.width, i * self.size),
+                             self.line)
+
+        for i in range(1, self.cols):
+            pygame.draw.line(self.screen, self.BLACK,
+                             (i * self.size, 0),
+                             (i * self.size, self.height),
+                             self.line)
+
+    def marker(self):
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if self.gameboard[i][j] == self.player1:
+                    pygame.draw.circle(self.screen, self.GREEN,
+                                       (j * self.size + self.size // 2,
+                                        i * self.size + self.size // 2),
+                                       self.radius, self.line)
+                elif self.gameboard[i][j] == self.player2:
+                    pygame.draw.line(self.screen, self.RED,
+                                     (j * self.size + 15, i * self.size + 15),
+                                     (j * self.size + self.size - 15,
+                                      i * self.size + self.size - 15), self.line)
+                    pygame.draw.line(self.screen, self.RED,
+                                     (j * self.size + 15,
+                                      i * self.size + self.size - 15),
+                                     (j * self.size + self.size - 15,
+                                      i * self.size + 15), self.line)
+
+    def main(self):
+        self.screen.fill(self.WHITE)
+        self.lines()
+        self.marker()
+
+        winner = self.Winner()
+        if winner is not None:
+            self.game_over = True
+            if winner == 'tie':
+                pygame.display.set_caption("It's a Tie!")
+            else:
+                pygame.display.set_caption(f"{winner} wins!")
+
+        if not self.game_over and self.current == self.player2:
+            move = self.best_move()
+            if move:
+                self.gameboard[move[0]][move[1]] = self.player2
+                self.current = self.player1
+
+        pygame.display.update()
+
+
+def game_loop():
+    game = TicTacToe()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if game.current == game.player1:
+                    x, y = pygame.mouse.get_pos()
+                    row = y // game.size
+                    col = x // game.size
+                    if not game.game_over and game.gameboard[row][col] == '':
+                        game.gameboard[row][col] = game.player1
+                        game.current = game.player2
+
+        game.main()
+
+
+if __name__ == "__main__":
+    game_loop()
