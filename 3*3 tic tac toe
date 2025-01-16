@@ -1,0 +1,208 @@
+import pygame
+import sys
+
+
+class TicTacToe:
+    def __init__(self):
+        """Initialize the game."""
+        pygame.init()
+
+        # Keep original variable names and values
+        self.width = 400
+        self.height = 400
+        self.screen = pygame.display.set_mode((self.width, self.height))
+        pygame.display.set_caption("Tic Tac Toe")
+
+        # Colors (keeping original names)
+        self.WHITE = (255, 255, 255)
+        self.BLACK = (0, 0, 0)
+        self.RED = (255, 0, 0)
+        self.GREEN = (0, 255, 0)
+
+        # Game constants (keeping original names)
+        self.rows = 3
+        self.cols = 3
+        self.size = self.width // 3
+        self.radius = self.size // 2.3
+        self.line = 10
+
+        # Game state (keeping original names)
+        self.gameboard = [["" for i in range(self.cols)] for k in range(self.rows)]
+        self.player1 = 'O'
+        self.player2 = 'X'
+        self.current = self.player1
+        self.game_over = False
+
+    def lines(self):
+        """Draw the gameboard."""
+        # Horizontal lines
+        for i in range(1, self.rows):
+            pygame.draw.line(self.screen, self.BLACK,
+                             (0, i * self.size),
+                             (self.width, i * self.size),
+                             self.line)
+
+        # Vertical lines
+        for i in range(1, self.cols):
+            pygame.draw.line(self.screen, self.BLACK,
+                             (i * self.size, 0),
+                             (i * self.size, self.height),
+                             self.line)
+
+    def marker(self):
+        """Draw O and X markers on the board."""
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if self.gameboard[i][j] == self.player1:
+                    pygame.draw.circle(self.screen, self.GREEN,
+                                       (j * self.size + self.size // 2,
+                                        i * self.size + self.size // 2),
+                                       self.radius, self.line)
+                elif self.gameboard[i][j] == self.player2:
+                    pygame.draw.line(self.screen, self.RED,
+                                     (j * self.size + 15, i * self.size + 15),
+                                     (j * self.size + self.size - 15,
+                                      i * self.size + self.size - 15),
+                                     self.line)
+                    pygame.draw.line(self.screen, self.RED,
+                                     (j * self.size + 15,
+                                      i * self.size + self.size - 15),
+                                     (j * self.size + self.size - 15,
+                                      i * self.size + 15),
+                                     self.line)
+
+    def Winner(self):
+        """Check for winner or tie."""
+        # Check rows for winner
+        for i in range(self.rows):
+            if (self.gameboard[i][0] == self.gameboard[i][1] == self.gameboard[i][2]
+                    and self.gameboard[i][0] != ''):
+                return self.gameboard[i][0]
+
+        # Check columns for winner
+        for j in range(self.cols):
+            if (self.gameboard[0][j] == self.gameboard[1][j] == self.gameboard[2][j]
+                    and self.gameboard[0][j] != ''):
+                return self.gameboard[0][j]
+
+        # Check diagonals for winner
+        if (self.gameboard[0][0] == self.gameboard[1][1] == self.gameboard[2][2]
+                and self.gameboard[0][0] != ''):
+            return self.gameboard[0][0]
+        if (self.gameboard[2][0] == self.gameboard[1][1] == self.gameboard[0][2]
+                and self.gameboard[0][2] != ''):
+            return self.gameboard[2][0]
+
+        # Check for tie
+        if not any('' in row for row in self.gameboard):
+            return 'tie'
+        return None
+
+    def minimax(self, gameboard, depth: int, maximize):
+        """Minimax algorithm for ai moves."""
+        winner = self.Winner()
+        if winner == self.player1:
+            return depth - 9
+        if winner == self.player2:
+            return 9 - depth
+
+        count = 0
+        for i in gameboard:
+            for k in i:
+                if k == "":
+                    count += 1
+        if count == 0:
+            return 0
+
+        if maximize:
+            # player2's turn
+            best = float('-inf')
+            for i in range(self.rows):
+                for j in range(self.cols):
+                    if gameboard[i][j] == "":
+                        gameboard[i][j] = self.player2
+                        best = max(best, self.minimax(gameboard, depth + 1, False))
+                        gameboard[i][j] = ""
+            return best
+        else:
+            # player1's turn
+            best = float('inf')
+            for i in range(self.rows):
+                for j in range(self.cols):
+                    if gameboard[i][j] == "":
+                        gameboard[i][j] = self.player1
+                        best = min(best, self.minimax(gameboard, depth + 1, True))
+                        gameboard[i][j] = ""
+            return best
+
+    def best_move(self):
+        """Get the best move for ai using minimax algorithm."""
+        best_value = float("-inf")
+        move = None
+        for i in range(self.rows):
+            for j in range(self.cols):
+                if self.gameboard[i][j] == "":
+                    self.gameboard[i][j] = self.player2
+                    move_value = self.minimax(self.gameboard, 0, False)
+                    self.gameboard[i][j] = ""
+                    if move_value > best_value:
+                        best_value = move_value
+                        move = (i, j)
+        return move
+
+    def reset_game(self):
+        """Reset the game."""
+        self.gameboard = [["" for i in range(self.cols)] for k in range(self.rows)]
+        self.current = self.player1
+        pygame.display.set_caption("Tic Tac Toe")
+        self.game_over = False
+
+    def main(self):
+        """Update game."""
+        self.screen.fill(self.WHITE)
+        self.lines()
+        self.marker()
+
+        winner = self.Winner()
+        if winner is not None:
+            self.game_over = True
+            if winner == 'tie':
+                pygame.display.set_caption("It's a Tie!")
+            else:
+                pygame.display.set_caption(f"{winner} wins!")
+
+        if not self.game_over and self.current == self.player2:
+            move = self.best_move()
+            if move:
+                self.gameboard[move[0]][move[1]] = self.player2
+                self.current = self.player1
+
+        pygame.display.update()
+
+
+def game_loop():
+    """Main game loop."""
+    game = TicTacToe()
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:  # Kept 'A' key for reset
+                    game.reset_game()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if game.current == game.player1:
+                    x, y = pygame.mouse.get_pos()
+                    row = y // game.size
+                    col = x // game.size
+                    if not game.game_over and game.gameboard[row][col] == '':
+                        game.gameboard[row][col] = game.player1
+                        game.current = game.player2
+
+        game.main()
+
+
+if __name__ == "__main__":
+    game_loop()
