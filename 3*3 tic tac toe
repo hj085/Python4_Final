@@ -7,26 +7,22 @@ class TicTacToe:
         """Initialize the game."""
         pygame.init()
 
-        # Keep original variable names and values
         self.width = 400
         self.height = 400
         self.screen = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("Tic Tac Toe")
 
-        # Colors (keeping original names)
         self.WHITE = (255, 255, 255)
         self.BLACK = (0, 0, 0)
         self.RED = (255, 0, 0)
         self.GREEN = (0, 255, 0)
 
-        # Game constants (keeping original names)
         self.rows = 3
         self.cols = 3
         self.size = self.width // 3
         self.radius = self.size // 2.3
         self.line = 10
 
-        # Game state (keeping original names)
         self.gameboard = [["" for i in range(self.cols)] for k in range(self.rows)]
         self.player1 = 'O'
         self.player2 = 'X'
@@ -37,39 +33,21 @@ class TicTacToe:
         """Draw the gameboard."""
         # Horizontal lines
         for i in range(1, self.rows):
-            pygame.draw.line(self.screen, self.BLACK,
-                             (0, i * self.size),
-                             (self.width, i * self.size),
-                             self.line)
+            pygame.draw.line(self.screen, self.BLACK, (0, i * self.size), (self.width, i * self.size), self.line)
 
         # Vertical lines
         for i in range(1, self.cols):
-            pygame.draw.line(self.screen, self.BLACK,
-                             (i * self.size, 0),
-                             (i * self.size, self.height),
-                             self.line)
+            pygame.draw.line(self.screen, self.BLACK, (i * self.size, 0), (i * self.size, self.height), self.line)
 
     def marker(self):
         """Draw O and X markers on the board."""
         for i in range(self.rows):
             for j in range(self.cols):
                 if self.gameboard[i][j] == self.player1:
-                    pygame.draw.circle(self.screen, self.GREEN,
-                                       (j * self.size + self.size // 2,
-                                        i * self.size + self.size // 2),
-                                       self.radius, self.line)
+                    pygame.draw.circle(self.screen, self.GREEN, (j * self.size + self.size // 2, i * self.size + self.size // 2), self.radius, self.line)
                 elif self.gameboard[i][j] == self.player2:
-                    pygame.draw.line(self.screen, self.RED,
-                                     (j * self.size + 15, i * self.size + 15),
-                                     (j * self.size + self.size - 15,
-                                      i * self.size + self.size - 15),
-                                     self.line)
-                    pygame.draw.line(self.screen, self.RED,
-                                     (j * self.size + 15,
-                                      i * self.size + self.size - 15),
-                                     (j * self.size + self.size - 15,
-                                      i * self.size + 15),
-                                     self.line)
+                    pygame.draw.line(self.screen, self.RED, (j * self.size + 15, i * self.size + 15), (j * self.size + self.size - 15, i * self.size + self.size - 15), self.line)
+                    pygame.draw.line(self.screen, self.RED, (j * self.size + 15, i * self.size + self.size - 15), (j * self.size + self.size - 15, i * self.size + 15), self.line)
 
     def Winner(self):
         """Check for winner or tie."""
@@ -95,7 +73,7 @@ class TicTacToe:
 
         # Check for tie
         if not any('' in row for row in self.gameboard):
-            return 'tie'
+            return 0
         return None
 
     def minimax(self, gameboard, depth: int, maximize):
@@ -166,7 +144,7 @@ class TicTacToe:
         winner = self.Winner()
         if winner is not None:
             self.game_over = True
-            if winner == 'tie':
+            if winner == 0:
                 pygame.display.set_caption("It's a Tie!")
             else:
                 pygame.display.set_caption(f"{winner} wins!")
